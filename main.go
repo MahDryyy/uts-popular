@@ -19,20 +19,22 @@ import (
 )
 
 var DB *sql.DB
-
 var jwtSecret = []byte("your_secret_key")
 
+// Struktur Data untuk Makanan
 type Food struct {
 	ID         int    `json:"id"`
 	Name       string `json:"name"`
 	ExpiryDate string `json:"expiry_date"`
 }
 
+// Struktur Request untuk Menambahkan Makanan
 type AddFoodRequest struct {
 	Name       string `json:"name"`
 	ExpiryDate string `json:"expiry_date"`
 }
 
+// Struktur Request dan Response untuk Resep Makanan
 type RecipeRequest struct {
 	FoodName string `json:"food_name"`
 }
@@ -41,11 +43,13 @@ type RecipeResponse struct {
 	Recipe string `json:"recipe"`
 }
 
+// Struktur Claims untuk JWT
 type Claims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
 
+// Fungsi untuk Inisialisasi Database
 func InitDB() {
 	var err error
 	DB, err = sql.Open("mysql", "root:@tcp(127.0.0.1:3306)/savebite")
@@ -61,11 +65,13 @@ func InitDB() {
 	fmt.Println("✅ Berhasil terhubung ke database")
 }
 
+// Fungsi untuk Menambah Makanan ke Database
 func AddFood(name, expiryDate string) error {
 	_, err := DB.Exec("INSERT INTO foods (name, expiry_date) VALUES (?, ?)", name, expiryDate)
 	return err
 }
 
+// Fungsi untuk Mendapatkan Makanan dari Database
 func GetFoods() ([]Food, error) {
 	rows, err := DB.Query("SELECT id, name, expiry_date FROM foods")
 	if err != nil {
@@ -85,16 +91,19 @@ func GetFoods() ([]Food, error) {
 	return foods, nil
 }
 
+// Fungsi untuk Menghapus Makanan Berdasarkan ID
 func DeleteFood(id string) error {
 	_, err := DB.Exec("DELETE FROM foods WHERE id = ?", id)
 	return err
 }
 
+// Fungsi untuk Menambah Resep ke Database
 func AddFoodRecipe(foodID int, recipe string) error {
 	_, err := DB.Exec("INSERT INTO food_recipes (food_id, recipe) VALUES (?, ?)", foodID, recipe)
 	return err
 }
 
+// Fungsi untuk Menghasilkan JWT Token
 func GenerateJWT(username string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
@@ -114,6 +123,7 @@ func GenerateJWT(username string) (string, error) {
 	return tokenString, nil
 }
 
+// Fungsi untuk Validasi Token JWT
 func ValidateToken(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
 	if tokenString == "" {
@@ -146,6 +156,7 @@ func ValidateToken(c *gin.Context) {
 	}
 }
 
+// Fungsi untuk Login dan Menghasilkan Token JWT
 func loginHandler(c *gin.Context) {
 	var req struct {
 		Username string `json:"username"`
@@ -168,6 +179,27 @@ func loginHandler(c *gin.Context) {
 	}
 
 	c.JSON(401, gin.H{"error": "Invalid credentials"})
+}
+
+// Fungsi utama untuk menangani routing di Vercel
+func handler(w http.ResponseWriter, r *http.Request) {
+	router := gin.Default()
+	router.GET("/hello", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "Hello, World!"})
+	})
+
+	// Menjalankan aplikasi Go
+	if err := router.Run(":3000"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
+
+	// Menangani request
+	fmt.Fprintf(w, "Vercel function is running!")
+}
+
+// Fungsi utama yang dipanggil Vercel
+func HelloHandler(w http.ResponseWriter, r *http.Request) {
+	handler(w, r)
 }
 
 func main() {
